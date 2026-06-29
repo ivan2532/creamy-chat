@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -19,13 +21,23 @@ func (client *Client) readPump() {
 	}()
 
 	for {
-		_, message, readError := client.connection.ReadMessage()
-
+		_, rawMessage, readError := client.connection.ReadMessage()
 		if readError != nil {
 			break
 		}
 
-		client.hub.broadcast <- message
+		var message Message
+		unmarshalError := json.Unmarshal(rawMessage, &message)
+		if unmarshalError != nil {
+			continue
+		}
+
+		broadcastBytes, marshalError := json.Marshal(message)
+		if marshalError != nil {
+			continue
+		}
+
+		client.hub.broadcast <- broadcastBytes
 	}
 }
 
