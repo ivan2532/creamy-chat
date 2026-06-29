@@ -7,12 +7,16 @@ interface ChatMessage {
 }
 
 function App() {
+  const [username, setUsername] = useState<string | null>(null)
+  const [usernameInput, setUsernameInput] = useState("")
+
   const webSocket = useRef<WebSocket | null>(null)
   useEffect(() => {
     webSocket.current = new WebSocket("ws://localhost:8080/ws")
 
     webSocket.current.onmessage = (event: MessageEvent) => {
-      setMessages(prev => [...prev, { sender: "Remote", text: event.data }])
+      const message = JSON.parse(event.data) as ChatMessage
+      setMessages(prev => [...prev, message])
     }
 
     return () => {
@@ -26,9 +30,25 @@ function App() {
   function handleSend() {
     if (inputText.trim() === "") return
 
-    const newMessage: ChatMessage = { sender: "You", text: inputText }
-    webSocket.current?.send(newMessage.text)
+    const newMessage: ChatMessage = { sender: username as string, text: inputText }
+    webSocket.current?.send(JSON.stringify(newMessage))
     setInputText("")
+  }
+
+  if (!username)
+  {
+    return (
+      <div className="username-input">
+        <input
+          type="text"
+          value={usernameInput}
+          onChange={(event) => setUsernameInput(event.target.value)}
+          onKeyDown={(event) => { if (event.key === "Enter") setUsername(usernameInput) }}
+          placeholder="Enter your username..."
+        />
+        <button onClick={() => setUsername(usernameInput)}>Submit</button>
+      </div>
+    )
   }
 
   return (
