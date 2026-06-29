@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 
 interface ChatMessage {
@@ -6,21 +6,28 @@ interface ChatMessage {
   text: string
 }
 
-const initialMessages: ChatMessage[] = [
-  { sender: "Alice", text: "Hey! Can you hear me?" },
-  { sender: "Bob", text: "Loud and clear! WebRTC when?" },
-  { sender: "Alice", text: "Soon. First we learn React." },
-]
-
 function App() {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
+  const webSocket = useRef<WebSocket | null>(null)
+  useEffect(() => {
+    webSocket.current = new WebSocket("ws://localhost:8080/ws")
+
+    webSocket.current.onmessage = (event: MessageEvent) => {
+      setMessages(prev => [...prev, { sender: "Remote", text: event.data }])
+    }
+
+    return () => {
+      webSocket.current?.close()
+    }
+  }, [])
+
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState("")
 
   function handleSend() {
     if (inputText.trim() === "") return
 
     const newMessage: ChatMessage = { sender: "You", text: inputText }
-    setMessages([...messages, newMessage])
+    webSocket.current?.send(newMessage.text)
     setInputText("")
   }
 
